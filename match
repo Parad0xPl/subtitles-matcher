@@ -1,0 +1,168 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const yargs = require("yargs");
+const path = require("path");
+const f = require("util").format;
+yargs
+  .alias("v", "video")
+  .describe("v", "Define extension for video file(s)")
+  .default("v", "mp4")
+  .string("v")
+  .alias("s", "subtitles")
+  .describe("s", "Define extension for subtitle file(s)")
+  .default("s", "srt")
+  .string("s")
+  .alias("l", "language")
+  .describe("l", "Define lagnuage code added to subtitles filename")
+  .string("l")
+  .describe("skip-season", "Skip season number")
+  .boolean("skip-season")
+  .alias("t", "test")
+  .describe("t", "Printing only names without changing them")
+  .boolean("t")
+  .alias("h", "help")
+  .help("help");
+
+const argv = yargs.argv;
+
+// Set custom video extension
+let ext = argv.video;
+// Check is extension started with dot
+if (ext && ext.charAt(0) != ".") ext = "." + ext;
+if (ext === undefined) {
+  console.log("[Error] Undefined extension");
+  process.exit(0);
+}
+
+// Set custom subtitles extension
+let sub = argv.subtitles;
+// Check is extension started with dot
+if (sub && sub.charAt(0) != ".") sub = "." + sub;
+if (sub === undefined) {
+  console.log("[Error] Undefined subtitles");
+  process.exit(0);
+}
+
+const skipSeason = argv["skip-season"];
+const langCode = argv["language"];
+const testMode = argv["test"];
+
+let pathToBeProcessed = ".";
+let files = fs.readdirSync(pathToBeProcessed);
+console.log("Founded %d files", files.length);
+
+let videos = files.filter(el => {
+  return el.slice(-ext.length) == ext;
+});
+console.log("%d videos", videos.length);
+let subtitles = files.filter(el => {
+  return el.slice(-sub.length) == sub;
+});
+console.log("%d subtitles", subtitles.length);
+
+const db = {
+  add(season, episode) {
+    if (skipSeason) season = 0;
+    if (!this.seasons[season]) {
+      this.seasons[season] = {};
+    }
+    if (this.seasons[season][episode]) {
+      throw new Error(f("Two same indexed files. %d %d", season, episode));
+    }
+    return this.get(season, episode);
+  },
+  get(season, episode) {
+    if (skipSeason) season = 0;
+    if (!this.seasons[season]) {
+      this.seasons[season] = {};
+    }
+    if (!this.seasons[season][episode]) {
+      this.seasons[season][episode] = {};
+    }
+    return this.seasons[season][episode];
+  },
+  seasons: []
+};
+
+function parse(filename) {
+  let firstPart = filename.slice(0, filename.indexOf(" "));
+  if (!isNaN(firstPart)) {
+    return { season: 0, episode: Number(firstPart) };
+  }
+
+  let regexpP1 = /s(\d+)e(\d+)/i;
+  if (regexpP1.test(filename)) {
+    let matched = regexpP1.exec(filename);
+    let season = Number(matched[1]);
+    let episode = Number(matched[2]);
+    return { season, episode };
+  }
+  return null;
+}
+
+class Video {
+  constructor(filename) {
+    this.parsed = path.parse(filename);
+    this.name = this.parsed.name;
+    this.ext = this.parsed.ext;
+    this.filename = this.name + this.ext;
+  }
+  getSubName(ext, codename) {
+    let tmp = Object.assign({}, this.parsed);
+    tmp.name = this.name;
+    if (codename) {
+      tmp.name += "." + codename;
+    }
+    tmp.ext = ext;
+    delete tmp.base;
+    return path.format(tmp);
+  }
+}
+
+videos.forEach(el => {
+  let meta = parse(el);
+  if (!meta) {
+    return;
+  }
+  var ep = db.add(meta.season, meta.episode);
+  ep.in = new Video(el);
+});
+
+class Subtitles {
+  constructor(filename) {
+    let parsed = path.parse(filename);
+    this.name = parsed.name;
+    this.ext = parsed.ext;
+    this.filename = this.name + this.ext;
+  }
+}
+
+subtitles.forEach(el => {
+  let meta = parse(el);
+  if (!meta) {
+    return;
+  }
+  let ep = db.get(meta.season, meta.episode);
+  ep.subtitles = new Subtitles(el);
+});
+
+db.seasons.forEach(el => {
+  Object.values(el).forEach(el => {
+    if (!el.in || !el.subtitles) {
+      return;
+    }
+    let input = el.in && el.in.filename;
+    let subtitleInput = el.subtitles.filename;
+    let subtitleOutput = el.in.getSubName(el.subtitles.ext, langCode);
+    console.log("[MOVE]");
+    console.log("From:\t%s\nTo:\t%s", subtitleInput, subtitleOutput);
+    if (!testMode) {
+      if (subtitleInput == subtitleOutput) {
+        console.log("Already good filename");
+      } else {
+        fs.renameSync(subtitleInput, subtitleOutput);
+      }
+    }
+  });
+});

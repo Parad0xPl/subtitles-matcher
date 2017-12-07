@@ -1,0 +1,18 @@
+{
+  "name": "subtitles-matcher",
+  "version": "0.1.0",
+  "description":
+    "Simple script to rename subtitles according to the video files",
+  "bin": {
+    "match": "./match"
+  },
+  "author": "Ksawery Parad0x Kukliński",
+  "license": "MIT",
+  "dependencies": {
+    "yargs": "^9.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KsawK/subtitles-matcher"
+  }
+}
