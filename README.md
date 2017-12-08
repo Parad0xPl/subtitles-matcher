@@ -5,7 +5,7 @@ private usage.
 
 ## Requirements
 
-To use you will new only:
+To use you will need only:
 * Node(lts/carbon) with npm
 
 ## Install
