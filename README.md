@@ -3,6 +3,11 @@
 Simple script for renaming external subtitles matching video files. Designed for
 private usage.
 
+## Requirements
+
+To use you will new only:
+* Node(lts/carbon) with npm
+
 ## Install
 
 `$ npm install -g subtitles-matcher`
