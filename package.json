@@ -9,7 +9,7 @@
   "author": "Ksawery Parad0x Kukliński",
   "license": "MIT",
   "dependencies": {
-    "yargs": "^9.0.1"
+    "yargs": "^17.7.1"
   },
   "repository": {
     "type": "git",
